@@ -1,67 +1,59 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
-import { fetchNotes } from "../../../../lib/api";
-import { Toaster } from "react-hot-toast";
-import { useDebounce } from "use-debounce";
-import Pagination from "../../../../components/Pagination/Pagination";
-import NoteList from "../../../../components/NoteList/NoteList";
-import SearchBox from "../../../../components/SearchBox/SearchBox";
-import Modal from "../../../../components/Modal/Modal";
-import NoteForm from "../../../../components/NoteForm/NoteForm";
-import Loader from "../../../../components/Loader/Loader";
-import ErrorMessage from "../../../../components/ErrorMessage/ErrorMessage";
+import { fetchNotes, type FetchNotesResponse } from "@/lib/api";
+import { useDebouncedCallback } from "use-debounce";
+import Pagination from "@/components/Pagination/Pagination";
+import NoteList from "@/components/NoteList/NoteList";
+import SearchBox from "@/components/SearchBox/SearchBox";
+import Loader from "@/components/Loader/Loader";
+import ErrorMessage from "@/components/ErrorMessage/ErrorMessage";
+import { NoteTag } from "@/types/note";
 import css from "./NotesClient.module.css";
+import Link from "next/link";
 
-type Props = {
-  tag?: string;
+type NotesClientProps = {
+  tag?: NoteTag | string;
 };
 
-export default function NotesClient({ tag }: Props) {
+export default function NotesClient({ tag }: NotesClientProps) {
   const [inputValue, setInputValue] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const [debouncedValue] = useDebounce(inputValue, 300);
+  const { data, isLoading, error, isError, isSuccess } =
+    useQuery<FetchNotesResponse>({
+      queryKey: ["notes", tag, inputValue, currentPage],
+      queryFn: () =>
+        fetchNotes({
+          page: currentPage,
+          search: inputValue,
+          tag: tag && tag !== "All" ? (tag as NoteTag) : undefined,
+        }),
+      placeholderData: keepPreviousData,
+    });
 
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
-
-  const { data, isLoading, error, isError, isSuccess } = useQuery({
-    queryKey: ["notes", tag, debouncedValue, currentPage],
-    queryFn: () =>
-      fetchNotes({
-        tag: tag && tag.toLowerCase() !== "all" ? tag : undefined,
-        search: debouncedValue || "",
-        page: currentPage,
-      }),
-    placeholderData: keepPreviousData,
-  });
-
-  useEffect(() => {
-    setInputValue("");
+  const changeInputValue = useDebouncedCallback((newQuery: string) => {
     setCurrentPage(1);
-  }, [tag]);
+    setInputValue(newQuery);
+  }, 300);
 
   const totalPages = data?.totalPages ?? 0;
+  const notes = data?.notes ?? [];
 
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
-        <Toaster position="top-center" />
-        <SearchBox
-          onSearch={(val) => {
-            setInputValue(val);
-            setCurrentPage(1);
-          }}
-        />
+        <SearchBox onSearch={changeInputValue} />
+
         {isLoading && <Loader />}
+
         {isError && (
           <ErrorMessage
             message={error instanceof Error ? error.message : "Unknown error"}
           />
         )}
+
         {isSuccess && totalPages > 1 && (
           <Pagination
             page={currentPage}
@@ -69,26 +61,19 @@ export default function NotesClient({ tag }: Props) {
             onChange={setCurrentPage}
           />
         )}
-        <button className={css.button} onClick={openModal}>
+
+        <Link href="/notes/action/create" className={css.button}>
           Create note +
-        </button>
+        </Link>
       </header>
 
-      {isSuccess && data?.notes?.length === 0 && (
+      {isSuccess && notes.length === 0 && (
         <div className={css.emptyState}>
-          <p>Any notes found for your request.</p>
+          <p>No notes found for your request.</p>
         </div>
       )}
 
-      {isSuccess && data?.notes && data?.notes.length > 0 && (
-        <NoteList notes={data.notes} />
-      )}
-
-      {isModalOpen && (
-        <Modal onClose={closeModal}>
-          <NoteForm onClose={closeModal} />
-        </Modal>
-      )}
+      {isSuccess && notes.length > 0 && <NoteList notes={notes} />}
     </div>
   );
 }
