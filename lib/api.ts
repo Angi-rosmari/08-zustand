@@ -1,5 +1,3 @@
-console.log("NOTEHUB TOKEN:", process.env.NEXT_PUBLIC_NOTEHUB_TOKEN);
-
 import axios from "axios";
 import type { Note, NewNoteData } from "@/types/note";
 

@@ -10,33 +10,66 @@ import {
 type Props = {
   params: Promise<{ slug?: string[] }>;
 };
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const slug = (await params).slug || [];
-  const tag =
-    slug.length > 0 && slug[0].toLowerCase() !== "all" ? slug[0] : "All";
+  const isAll = slug.length === 0 || slug[0].toLowerCase() === "all";
+  const tag = isAll ? null : slug[0];
 
-  const pageTitle = `Notes - ${tag}`;
-  const pageDescription = `Filtered notes by tag: ${tag}`;
+  const title = isAll
+    ? "All notes | NoteHub"
+    : `Notes filtered by ${tag} | NoteHub`;
+
+  const description = isAll
+    ? "All notes without filters"
+    : `Notes filtered by tag: ${tag}`;
 
   return {
-    title: pageTitle,
-    description: pageDescription,
+    title,
+    description,
     openGraph: {
-      title: pageTitle,
-      description: pageDescription,
-      url: `https://notehub.com/notes/filter/${tag.toLowerCase()}`,
+      title,
+      description,
+      url: isAll
+        ? "https://notehub.com/notes"
+        : `https://notehub.com/notes/filter/${tag!.toLowerCase()}`,
       images: [
         {
           url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
           width: 1200,
           height: 630,
-          alt: "Notes preview",
+          alt: "NoteHub notes page",
         },
       ],
     },
   };
 }
+
+// export async function generateMetadata({ params }: Props): Promise<Metadata> {
+//   const slug = (await params).slug || [];
+//   const tag =
+//     slug.length > 0 && slug[0].toLowerCase() !== "all" ? slug[0] : "All";
+
+//   const pageTitle = `Notes - ${tag}`;
+//   const pageDescription = `Filtered notes by tag: ${tag}`;
+
+//   return {
+//     title: pageTitle,
+//     description: pageDescription,
+//     openGraph: {
+//       title: pageTitle,
+//       description: pageDescription,
+//       url: `https://notehub.com/notes/filter/${tag.toLowerCase()}`,
+//       images: [
+//         {
+//           url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+//           width: 1200,
+//           height: 630,
+//           alt: "Notes preview",
+//         },
+//       ],
+//     },
+//   };
+// }
 
 export default async function NotesSlugPage({ params }: Props) {
   const slug = (await params).slug || [];
